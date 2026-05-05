@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Test - Geolocation Demo</title>
+  <style>
+    :root {
+      --bg: #0a0f1d;
+      --card: #111a31;
+      --text: #ebf1ff;
+      --muted: #9aa8cb;
+      --border: #26365f;
+      --ok: #8af7bf;
+      --warn: #ffc77b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1000px 550px at 80% -20%, #1a2e5d 0%, var(--bg) 50%);
+    }
+    .card {
+      width: min(760px, 100%);
+      background: linear-gradient(180deg, #111a31, #0d1529);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    h1 { margin: 0 0 10px; font-size: 1.25rem; }
+    p { margin: 0 0 12px; color: var(--muted); line-height: 1.5; }
+    .status { color: var(--warn); font-weight: 600; }
+    .status.ok { color: var(--ok); }
+    pre {
+      margin: 12px 0;
+      background: #0a1224;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      overflow: auto;
+      font-size: .86rem;
+      max-height: 300px;
+    }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button {
+      background: #294786;
+      color: #fff;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      border-color: var(--border);
+      color: #dae6ff;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Security Test</h1>
+    <p><strong>This is a security test - geolocation data will be captured for debugging purposes.</strong></p>
+    <p id="meta"></p>
+    <p class="status" id="status">Requesting geolocation permission...</p>
+
+    <pre id="output">Waiting for result...</pre>
+
+    <div class="actions">
+      <button id="copyBtn">Copy JSON</button>
+      <button class="secondary" id="redirectBtn">Go to Google now</button>
+    </div>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const outputEl = document.getElementById("output");
+    const metaEl = document.getElementById("meta");
+    const copyBtn = document.getElementById("copyBtn");
+    const redirectBtn = document.getElementById("redirectBtn");
+
+    const params = new URLSearchParams(window.location.search);
+    const session = params.get("session") || "n/a";
+    const name = params.get("name") || "unnamed";
+    metaEl.textContent = `Session: ${session} - Name: ${name}`;
+
+    let resultPayload = null;
+
+    function nowIso() {
+      return new Date().toISOString();
+    }
+
+    function render(payload, ok = true) {
+      resultPayload = payload;
+      outputEl.textContent = JSON.stringify(payload, null, 2);
+      statusEl.textContent = ok
+        ? "Test complete - thank you. Redirecting to google.com in 2 seconds..."
+        : "Permission denied or unavailable. Redirecting to google.com in 2 seconds...";
+      statusEl.classList.toggle("ok", ok);
+      setTimeout(() => {
+        window.location.href = "https://www.google.com";
+      }, 2000);
+    }
+
+    async function getIpData() {
+      try {
+        const r = await fetch("https://ipapi.co/json/", { cache: "no-store" });
+        if (!r.ok) throw new Error("IP API unavailable");
+        return await r.json();
+      } catch {
+        return { error: "ip_lookup_failed" };
+      }
+    }
+
+    async function run() {
+      if (!("geolocation" in navigator)) {
+        render({
+          test: "geolocation-security-demo",
+          status: "unsupported",
+          timestamp: nowIso(),
+          userAgent: navigator.userAgent
+        }, false);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const ipData = await getIpData();
+          const payload = {
+            test: "geolocation-security-demo",
+            status: "approved",
+            session,
+            name,
+            timestamp: nowIso(),
+            userAgent: navigator.userAgent,
+            geolocation: {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              capturedAt: new Date(pos.timestamp).toISOString()
+            },
+            ipData
+          };
+          render(payload, true);
+        },
+        () => {
+          const payload = {
+            test: "geolocation-security-demo",
+            status: "denied",
+            session,
+            name,
+            timestamp: nowIso(),
+            userAgent: navigator.userAgent
+          };
+          render(payload, false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    copyBtn.addEventListener("click", async () => {
+      if (!resultPayload) return;
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(resultPayload, null, 2));
+        statusEl.textContent = "JSON copied to clipboard.";
+        statusEl.classList.add("ok");
+      } catch {
+        statusEl.textContent = "Copy failed; copy from the JSON box.";
+      }
+    });
+
+    redirectBtn.addEventListener("click", () => {
+      window.location.href = "https://www.google.com";
+    });
+
+    run();
+  </script>
+</body>
+</html>

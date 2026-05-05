@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Test Control Panel</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a2f;
+      --muted: #9aa4bf;
+      --text: #e7ecff;
+      --accent: #6ea8fe;
+      --accent-2: #87f5b8;
+      --border: #283252;
+      --danger: #ff7b9c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #172447 0%, var(--bg) 45%);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+    .panel {
+      width: min(720px, 100%);
+      background: linear-gradient(180deg, #121a2f, #0f1629);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.35);
+    }
+    h1 { margin: 0 0 10px; font-size: 1.35rem; }
+    p { margin: 0 0 14px; color: var(--muted); line-height: 1.5; }
+    .row { display: grid; gap: 10px; margin-top: 12px; }
+    label { font-size: .9rem; color: #c8d2ef; }
+    input, textarea {
+      width: 100%;
+      background: #0d1427;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    .btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    button {
+      border: 1px solid transparent;
+      background: #22345f;
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.primary { background: linear-gradient(180deg, #3c6dd8, #2f59b4); }
+    button.ghost { background: transparent; border-color: var(--border); color: #d8e2ff; }
+    .note { margin-top: 12px; color: var(--muted); font-size: .88rem; }
+    .ok { color: var(--accent-2); }
+    .warn { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>Security Testing Demo - Control Panel</h1>
+    <p>
+      Generate a unique link for an explicit geolocation test page. This safe demo does not auto-forward data to third-party webhooks.
+    </p>
+
+    <div class="row">
+      <label for="sessionName">Session name (optional)</label>
+      <input id="sessionName" placeholder="e.g. mobile-browser-test" />
+    </div>
+
+    <div class="row">
+      <label for="generatedLink">Generated test link</label>
+      <textarea id="generatedLink" rows="3" readonly placeholder="Click Generate link..."></textarea>
+    </div>
+
+    <div class="btns">
+      <button class="primary" id="generateBtn">Generate link</button>
+      <button class="ghost" id="copyBtn">Copy link</button>
+      <button class="ghost" id="openBtn">Open link</button>
+    </div>
+
+    <p class="note" id="status">Ready.</p>
+  </main>
+
+  <script>
+    const sessionNameEl = document.getElementById("sessionName");
+    const generatedLinkEl = document.getElementById("generatedLink");
+    const statusEl = document.getElementById("status");
+
+    const generateBtn = document.getElementById("generateBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const openBtn = document.getElementById("openBtn");
+
+    function setStatus(msg, type = "normal") {
+      statusEl.textContent = msg;
+      statusEl.className = "note " + (type === "ok" ? "ok" : type === "warn" ? "warn" : "");
+    }
+
+    function makeId() {
+      if (crypto.randomUUID) return crypto.randomUUID();
+      return Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+
+    generateBtn.addEventListener("click", () => {
+      const id = makeId();
+      const name = sessionNameEl.value.trim();
+      const url = new URL("./test.html", window.location.href);
+      url.searchParams.set("session", id);
+      if (name) url.searchParams.set("name", name);
+      generatedLinkEl.value = url.toString();
+      setStatus("Link generated.", "ok");
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      const link = generatedLinkEl.value.trim();
+      if (!link) return setStatus("Generate a link first.", "warn");
+      try {
+        await navigator.clipboard.writeText(link);
+        setStatus("Link copied to clipboard.", "ok");
+      } catch {
+        setStatus("Clipboard write failed. Copy manually.", "warn");
+      }
+    });
+
+    openBtn.addEventListener("click", () => {
+      const link = generatedLinkEl.value.trim();
+      if (!link) return setStatus("Generate a link first.", "warn");
+      window.open(link, "_blank", "noopener,noreferrer");
+      setStatus("Opened test link in a new tab.", "ok");
+    });
+  </script>
+</body>
+</html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tracking Pixel Generator</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #141b34;
+        --muted: #9aa4c7;
+        --text: #f4f7ff;
+        --accent: #6ea8fe;
+        --accent-hover: #8abbff;
+        --border: #243057;
+        --ok: #69d4a8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+        background: radial-gradient(circle at top, #111a37 0%, var(--bg) 40%);
+        color: var(--text);
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .card {
+        width: min(860px, 100%);
+        background: linear-gradient(180deg, #172145, var(--panel));
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.5rem;
+      }
+
+      .subtitle {
+        margin: 0 0 22px;
+        color: var(--muted);
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #0e1530;
+        color: var(--text);
+        padding: 12px;
+        outline: none;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+      }
+
+      .row {
+        margin-top: 14px;
+      }
+
+      .buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        color: #081126;
+        background: var(--accent);
+        font-weight: 700;
+      }
+
+      button:hover {
+        background: var(--accent-hover);
+      }
+
+      .secondary {
+        color: var(--text);
+        background: #1c2650;
+        border: 1px solid var(--border);
+      }
+
+      .secondary:hover {
+        background: #263463;
+      }
+
+      .output {
+        margin-top: 14px;
+        background: #0e1530;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        word-break: break-all;
+        color: #dbe6ff;
+      }
+
+      .status {
+        min-height: 20px;
+        margin-top: 8px;
+        color: var(--ok);
+        font-size: 0.9rem;
+      }
+
+      pre {
+        margin-top: 16px;
+        background: #0b132d;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        color: #dce7ff;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Consent-Based Analytics Pixel</h1>
+      <p class="subtitle">
+        Generate a trackable pixel URL for analytics or debugging and forward logs to Discord.
+      </p>
+
+      <div class="row">
+        <label for="baseUrl">Base URL</label>
+        <input id="baseUrl" type="text" placeholder="https://your-domain.vercel.app" />
+      </div>
+
+      <div class="row">
+        <label for="campaign">Optional tag/campaign</label>
+        <input id="campaign" type="text" placeholder="spring-launch" />
+      </div>
+
+      <div class="buttons">
+        <button id="generateBtn">Generate Pixel URL</button>
+        <button id="copyBtn" class="secondary" type="button">Copy URL</button>
+      </div>
+
+      <div id="pixelUrl" class="output">Pixel URL will appear here.</div>
+      <div id="status" class="status"></div>
+
+      <h2>Example Discord Webhook Output</h2>
+      <pre>{
+  "username": "Tracking Pixel",
+  "embeds": [
+    {
+      "title": "New Tracking Pixel Hit",
+      "fields": [
+        { "name": "IP", "value": "203.0.113.5" },
+        { "name": "User-Agent", "value": "Mozilla/5.0 (...)" },
+        { "name": "Referrer", "value": "https://example.com/page" },
+        { "name": "Geo", "value": "Seattle, Washington, United States (47.6, -122.3)" },
+        { "name": "URL", "value": "https://your-domain.vercel.app/api/log?tag=spring-launch" }
+      ]
+    }
+  ]
+}</pre>
+    </main>
+
+    <script>
+      const baseUrlInput = document.getElementById("baseUrl");
+      const campaignInput = document.getElementById("campaign");
+      const generateBtn = document.getElementById("generateBtn");
+      const copyBtn = document.getElementById("copyBtn");
+      const pixelUrlEl = document.getElementById("pixelUrl");
+      const statusEl = document.getElementById("status");
+
+      const defaultBaseUrl = window.location.origin;
+      baseUrlInput.value = defaultBaseUrl;
+
+      const buildPixelUrl = () => {
+        const base = baseUrlInput.value.trim().replace(/\/+$/, "");
+        if (!base) {
+          return "";
+        }
+
+        const pixel = new URL(base + "/api/log");
+        const tag = campaignInput.value.trim();
+        if (tag) {
+          pixel.searchParams.set("tag", tag);
+        }
+        return pixel.toString();
+      };
+
+      generateBtn.addEventListener("click", () => {
+        const pixelUrl = buildPixelUrl();
+        pixelUrlEl.textContent = pixelUrl || "Please enter a valid base URL.";
+        statusEl.textContent = "";
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        const pixelUrl = buildPixelUrl();
+        if (!pixelUrl) {
+          statusEl.textContent = "Unable to copy: set a valid base URL first.";
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(pixelUrl);
+          pixelUrlEl.textContent = pixelUrl;
+          statusEl.textContent = "Copied pixel URL to clipboard.";
+        } catch (_error) {
+          statusEl.textContent = "Clipboard copy failed. Copy manually from above.";
+        }
+      });
+    </script>
+  </body>
+</html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>URL Shortener MVP</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --card: #181c22;
+        --text: #e6edf3;
+        --muted: #9aa4b2;
+        --accent: #4f8cff;
+        --accent-hover: #3d78e8;
+        --danger: #ff6b6b;
+        --success: #40c57b;
+        --border: #2b313a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+        background: radial-gradient(circle at top, #131821 0%, var(--bg) 45%);
+        color: var(--text);
+        display: grid;
+        place-items: center;
+        padding: 20px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 640px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: clamp(1.4rem, 4vw, 2rem);
+      }
+
+      p {
+        margin: 0 0 20px;
+        color: var(--muted);
+      }
+
+      form {
+        display: grid;
+        gap: 12px;
+      }
+
+      input {
+        width: 100%;
+        border: 1px solid var(--border);
+        background: #0f141b;
+        color: var(--text);
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 1rem;
+        outline: none;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.2);
+      }
+
+      button {
+        border: none;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+      }
+
+      .primary:hover {
+        background: var(--accent-hover);
+      }
+
+      .result-wrap {
+        margin-top: 18px;
+        display: none;
+        gap: 10px;
+      }
+
+      .result {
+        flex: 1;
+        background: #0f141b;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 14px;
+        overflow-wrap: anywhere;
+      }
+
+      .copy {
+        background: #252c36;
+        color: var(--text);
+        min-width: 110px;
+      }
+
+      .copy:hover {
+        background: #2f3945;
+      }
+
+      .message {
+        margin-top: 12px;
+        min-height: 20px;
+        font-size: 0.95rem;
+      }
+
+      .error {
+        color: var(--danger);
+      }
+
+      .success {
+        color: var(--success);
+      }
+
+      @media (max-width: 600px) {
+        .card {
+          padding: 18px;
+        }
+
+        .result-wrap {
+          display: grid;
+        }
+
+        .copy {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>URL Shortener</h1>
+      <p>Paste a long URL and get a short link instantly.</p>
+
+      <form id="shortenForm">
+        <input
+          id="longUrl"
+          type="url"
+          placeholder="https://example.com/very/long/link"
+          autocomplete="off"
+          required
+        />
+        <button class="primary" type="submit">Shorten URL</button>
+      </form>
+
+      <div id="resultWrap" class="result-wrap">
+        <div id="resultText" class="result"></div>
+        <button id="copyBtn" class="copy" type="button">Copy</button>
+      </div>
+
+      <div id="message" class="message"></div>
+    </main>
+
+    <script>
+      const form = document.getElementById("shortenForm");
+      const longUrlInput = document.getElementById("longUrl");
+      const resultWrap = document.getElementById("resultWrap");
+      const resultText = document.getElementById("resultText");
+      const copyBtn = document.getElementById("copyBtn");
+      const message = document.getElementById("message");
+
+      let latestShortUrl = "";
+
+      function showMessage(text, type) {
+        message.textContent = text;
+        message.className = "message " + (type || "");
+      }
+
+      function isValidUrl(value) {
+        try {
+          const parsed = new URL(value);
+          return parsed.protocol === "http:" || parsed.protocol === "https:";
+        } catch {
+          return false;
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        showMessage("");
+        resultWrap.style.display = "none";
+        latestShortUrl = "";
+
+        const longUrl = longUrlInput.value.trim();
+
+        if (!longUrl) {
+          showMessage("URL cannot be empty.", "error");
+          return;
+        }
+
+        if (!isValidUrl(longUrl)) {
+          showMessage("Please enter a valid URL.", "error");
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/shorten", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ longUrl })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            showMessage(data.error || "Failed to shorten URL.", "error");
+            return;
+          }
+
+          latestShortUrl = data.shortUrl;
+          resultText.textContent = data.shortUrl;
+          resultWrap.style.display = "flex";
+          showMessage("Short URL created successfully.", "success");
+        } catch (error) {
+          showMessage("Server error. Please try again.", "error");
+        }
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        if (!latestShortUrl) {
+          showMessage("Nothing to copy yet.", "error");
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(latestShortUrl);
+          showMessage("Copied to clipboard.", "success");
+        } catch (error) {
+          showMessage("Copy failed. Please copy manually.", "error");
+        }
+      });
+    </script>
+  </body>
+</html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Click Logger</title>
+  </head>
+  <body>
+    <h1>Click the image</h1>
+    <img
+      id="track-image"
+      src="https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=800&q=80"
+      alt="Sample"
+      style="max-width: 400px; cursor: pointer;"
+    />
+
+    <script>
+      const image = document.getElementById("track-image");
+
+      image.addEventListener("click", async () => {
+        try {
+          await fetch("/api/log", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              url: window.location.href,
+              userAgent: navigator.userAgent,
+            }),
+          });
+        } catch (error) {
+          console.error("Failed to send log:", error);
+        }
+      });
+    </script>
+  </body>
+</html>
