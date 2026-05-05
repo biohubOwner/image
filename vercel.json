@@ -1,22 +1,13 @@
 {
   "version": 2,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/log",
-      "dest": "/api/log.js"
+      "source": "/api/log",
+      "destination": "/api/log.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
-}
-{
-  "version": 2,
-  "routes": [
-    {
-      "src": "/api/log",
-      "dest": "/api/log.js"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
